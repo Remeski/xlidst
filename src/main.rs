@@ -8,31 +8,43 @@ use crate::typst::{Text, TypstElement};
 mod utils;
 mod typst;
 
-pub trait ToTexture {
+pub trait Source {
     fn to_texture(&self, app: &App, sandbox: &Sandbox) -> Texture;
+    fn get_x(&self) -> f32;
+    fn get_y(&self) -> f32;
 }
 
 struct SourceSlide {
     background_color: rgb::Srgb<u8>,
-    sources: Vec<Box<dyn ToTexture>>,
+    sources: Vec<Box<dyn Source>>,
 }
 
 impl SourceSlide {
     fn parse(&self, app: &App, sandbox: &Sandbox) -> Slide {
-        let textures = self.sources.iter().map(|source| {
-            return source.to_texture(app, sandbox);
-        }).collect::<Vec<Texture>>();
+        let elements = self.sources.iter().map(|source| {
+            return Element{
+                texture: Some(source.to_texture(app, sandbox)),
+                x: source.get_x(),
+                y: source.get_y()
+            }
+        }).collect::<Vec<Element>>();
 
         Slide {
             background_color: self.background_color,
-            textures
+            elements
         }
     }
 }
 
+struct Element {
+    texture: Option<wgpu::Texture>,
+    x: f32,
+    y: f32
+}
+
 struct Slide {
     background_color: rgb::Srgb<u8>,
-    textures: Vec<wgpu::Texture>
+    elements: Vec<Element>
 }
 
 struct Model {
@@ -46,7 +58,7 @@ fn model(app: &App) -> Model {
     let source_slides = vec![
         SourceSlide{
             background_color: PURPLE,
-            sources: vec![Box::from(Text::from("NAPS"))]
+            sources: vec![Box::from(Text::with_pos("NAPS", (200.0, 100.0))), Box::from(Text::with_pos("MUNKKI", (-200.0, 0.0)))]
         },
         SourceSlide{
             background_color: RED,
@@ -89,8 +101,10 @@ fn view(app: &App, model: &Model, frame: Frame){
     let current_slide = &model.slides[model.current_slide];
     let draw = app.draw();
     draw.background().color(current_slide.background_color);
-    for texture in &current_slide.textures {
-        draw.texture(texture);
+    for element in &current_slide.elements {
+        if let Some(texture) = &element.texture {
+            draw.texture(texture).x(element.x).y(element.y);
+        }
     }
     draw.to_frame(app, &frame).unwrap();
 }

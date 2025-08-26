@@ -3,7 +3,7 @@ use tiny_skia::Pixmap;
 use typst::layout::{Axis, PagedDocument};
 use nannou::wgpu;
 
-use crate::utils::{self, sandbox::{self, Sandbox}};
+use crate::utils::{self, sandbox::Sandbox};
 
 const DESIRED_RESOLUTION: f32 = 1000.0;
 const MAX_SIZE: f32 = 10000.0;
@@ -68,38 +68,76 @@ fn compile_to_texture(source: &str, sandbox: &Sandbox, app: &App) -> Texture {
 
 pub struct TypstElement {
     source: String,
+    x: f32,
+    y: f32
 }
 
 impl TypstElement {
     pub fn from(source: &str) -> TypstElement {
         TypstElement {
-            source: String::from(source)
+            source: String::from(source),
+            x: 0.0,
+            y: 0.0
         }
+    }
+    pub fn set_x(&mut self, x: f32) {
+        self.x = x;
+    }
+    pub fn set_y(&mut self, y: f32) {
+        self.y = y;
     }
 }
 
-impl crate::ToTexture for TypstElement {
+impl crate::Source for TypstElement {
     fn to_texture(&self, app: &App, sandbox: &Sandbox) -> Texture {
         compile_to_texture(&self.source, sandbox, app)
+    }
+    fn get_x(&self) -> f32 {
+        self.x
+    }
+    fn get_y(&self) -> f32 {
+        self.y
     }
 }
 
 pub struct Text {
-    text: String
+    text: String,
+    x: f32,
+    y: f32
 }
 
 impl Text {
     pub fn from(source: &str) -> Text {
         Text {
-            text: String::from(source)
+            text: String::from(source),
+            x: 0.0,
+            y: 0.0
         }
+    }
+    pub fn with_pos(source: &str, (x,y): (f32, f32)) -> Text {
+        let mut text = Self::from(source);
+        text.set_x(x);
+        text.set_y(y);
+        text
+    }
+    pub fn set_x(&mut self, x: f32) {
+        self.x = x;
+    }
+    pub fn set_y(&mut self, y: f32) {
+        self.y = y;
     }
 }
 
-impl crate::ToTexture for Text {
+impl crate::Source for Text {
     fn to_texture(&self, app: &App, sandbox: &Sandbox) -> Texture {
         let source = format!("#set page(fill: none, width: auto, height: auto)\n#text([{}])", &self.text);
         let typst_element = TypstElement::from(&source);
         typst_element.to_texture(app, sandbox)
+    }
+    fn get_x(&self) -> f32 {
+        self.x
+    }
+    fn get_y(&self) -> f32 {
+        self.y
     }
 }
