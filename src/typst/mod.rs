@@ -83,3 +83,23 @@ impl crate::ToTexture for TypstElement {
         compile_to_texture(&self.source, sandbox, app)
     }
 }
+
+pub struct Text {
+    text: String
+}
+
+impl Text {
+    pub fn from(source: &str) -> Text {
+        Text {
+            text: String::from(source)
+        }
+    }
+}
+
+impl crate::ToTexture for Text {
+    fn to_texture(&self, app: &App, sandbox: &Sandbox) -> Texture {
+        let source = format!("#set page(fill: none, width: auto, height: auto)\n#text([{}])", &self.text);
+        let typst_element = TypstElement::from(&source);
+        typst_element.to_texture(app, sandbox)
+    }
+}

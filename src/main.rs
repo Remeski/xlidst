@@ -3,7 +3,7 @@ extern crate nannou;
 use nannou::{prelude::*, wgpu::Texture};
 use utils::sandbox::Sandbox;
 
-use crate::typst::TypstElement;
+use crate::typst::{Text, TypstElement};
 
 mod utils;
 mod typst;
@@ -46,7 +46,7 @@ fn model(app: &App) -> Model {
     let source_slides = vec![
         SourceSlide{
             background_color: PURPLE,
-            sources: vec![Box::from(TypstElement::from("#set page(width: 100pt, height: 100pt)\n= NAPS"))]
+            sources: vec![Box::from(Text::from("NAPS"))]
         },
         SourceSlide{
             background_color: RED,
