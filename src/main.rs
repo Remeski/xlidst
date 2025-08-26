@@ -1,81 +1,31 @@
 extern crate nannou;
 
-use nannou::{prelude::*};
-use typst::foundations::Str;
-use typst::layout::{Axis, PagedDocument};
-use nannou::wgpu;
-use nannou::wgpu::TextureBuilder;
-use typst::World;
-mod sandbox;
+use nannou::{prelude::*, wgpu::Texture};
+use utils::sandbox::Sandbox;
 
-const DESIRED_RESOLUTION: f32 = 1000.0;
-const MAX_SIZE: f32 = 10000.0;
-const MAX_PIXELS_PER_POINT: f32 = 5.0;
+use crate::typst::TypstElement;
 
-#[derive(Debug)]
-pub struct TooBig {
-	size: f32,
-	axis: Axis,
-}
+mod utils;
+mod typst;
 
-fn pixmap_to_texture(app: &App, pixmap: &tiny_skia::Pixmap) -> wgpu::Texture {
-    // create a texture from pixmap
-    // pixmap.data() is [u8] where byteorder RGBA
-    let window = app.main_window();
-    let device = window.device();
-    let queue = window.queue();
-
-    let image = nannou::image::RgbaImage::from_raw(pixmap.width(), pixmap.height(), pixmap.data().to_vec()).expect("rgbaimage creation failed");
-    let dynamic_image = nannou::image::DynamicImage::ImageRgba8(image);
-    wgpu::Texture::load_from_image(device, queue, wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT, &dynamic_image)
-}
-
-fn determine_pixels_per_point(size: typst::layout::Size) -> Result<f32, TooBig> {
-	// We want to truncate.
-	#![allow(clippy::cast_possible_truncation)]
-
-	let x = size.x.to_pt() as f32;
-	let y = size.y.to_pt() as f32;
-
-	if x > MAX_SIZE {
-		Err(TooBig {
-			size: x,
-			axis: Axis::X,
-		})
-	} else if y > MAX_SIZE {
-		Err(TooBig {
-			size: y,
-			axis: Axis::Y,
-		})
-	} else {
-		let area = x * y;
-		let nominal = DESIRED_RESOLUTION / area.sqrt();
-		Ok(nominal.min(MAX_PIXELS_PER_POINT))
-	}
-}
-
-fn compile_pixmap(sandbox: &crate::sandbox::Sandbox, source: &str) -> tiny_skia::Pixmap {
-    let world = sandbox.with_source(String::from(source));
-    let document = typst::compile::<PagedDocument>(&world);
-    let output = document.output.expect("Typst compilation failed");
-    let page = output.pages.get(0).expect("No pages rendered");
-    let pixels_per_point = determine_pixels_per_point(page.frame.size()).unwrap();
-    let render = typst_render::render(page, pixels_per_point);
-    render
+pub trait ToTexture {
+    fn to_texture(&self, app: &App, sandbox: &Sandbox) -> Texture;
 }
 
 struct SourceSlide {
     background_color: rgb::Srgb<u8>,
-    source: String,
+    sources: Vec<Box<dyn ToTexture>>,
 }
 
 impl SourceSlide {
-    fn parse(&self, app: &App, sandbox: &sandbox::Sandbox) -> Slide {
-        let pixmap = compile_pixmap(sandbox, &self.source);
-        let texture = pixmap_to_texture(app, &pixmap);
+    fn parse(&self, app: &App, sandbox: &Sandbox) -> Slide {
+        let textures = self.sources.iter().map(|source| {
+            return source.to_texture(app, sandbox);
+        }).collect::<Vec<Texture>>();
+
         Slide {
             background_color: self.background_color,
-            textures: vec![texture]
+            textures
         }
     }
 }
@@ -88,24 +38,23 @@ struct Slide {
 struct Model {
     current_slide: usize,
     slides: Vec<Slide>,
-    // sandbox: crate::sandbox::Sandbox,
 }
 
 fn model(app: &App) -> Model {
-    let sandbox = crate::sandbox::Sandbox::new();
+    let sandbox = utils::sandbox::Sandbox::new();
 
     let source_slides = vec![
         SourceSlide{
             background_color: PURPLE,
-            source: String::from("#set page(width: 100pt, height: 100pt)\n= NAPS")
+            sources: vec![Box::from(TypstElement::from("#set page(width: 100pt, height: 100pt)\n= NAPS"))]
         },
         SourceSlide{
             background_color: RED,
-            source: String::from("#set page(width: 100pt, height: 100pt)\n== Euler\n$e^(i pi) + 1 = 0$")
+            sources: vec![Box::from(TypstElement::from("#set page(width: 100pt, height: 100pt)\n== Euler\n$e^(i pi) + 1 = 0$"))]
         },
         SourceSlide{
             background_color: BLUE,
-            source: String::from("#set page(width: 100pt, height: 100pt)\n== Hemo munk")
+            sources: vec![Box::from(TypstElement::from("#set page(width: 100pt, height: 100pt)\n== Hemo munk"))]
         }];
 
     let slides = source_slides.iter().map(|s| s.parse(app, &sandbox)).collect();
