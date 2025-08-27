@@ -3,79 +3,12 @@ extern crate nannou;
 use nannou::{prelude::*, wgpu::Texture};
 use utils::sandbox::Sandbox;
 
-use crate::typst::{Text, TypstElement};
+use crate::{sildes::Slideshow, typst::{TypstElement}};
 
 mod utils;
 mod typst;
+mod sildes;
 
-pub trait Source {
-    fn to_texture(&self, app: &App, sandbox: &Sandbox) -> Texture;
-    fn get_x(&self) -> f32;
-    fn get_y(&self) -> f32;
-}
-
-struct SourceSlide {
-    background_color: rgb::Srgb<u8>,
-    sources: Vec<Box<dyn Source>>,
-}
-
-impl SourceSlide {
-    fn parse(&self, app: &App, sandbox: &Sandbox) -> Slide {
-        let elements = self.sources.iter().map(|source| {
-            return Element{
-                texture: Some(source.to_texture(app, sandbox)),
-                x: source.get_x(),
-                y: source.get_y()
-            }
-        }).collect::<Vec<Element>>();
-
-        Slide {
-            background_color: self.background_color,
-            elements
-        }
-    }
-}
-
-struct Element {
-    texture: Option<wgpu::Texture>,
-    x: f32,
-    y: f32
-}
-
-struct Slide {
-    background_color: rgb::Srgb<u8>,
-    elements: Vec<Element>
-}
-
-struct Model {
-    current_slide: usize,
-    slides: Vec<Slide>,
-}
-
-fn model(app: &App) -> Model {
-    let sandbox = utils::sandbox::Sandbox::new();
-
-    let source_slides = vec![
-        SourceSlide{
-            background_color: PURPLE,
-            sources: vec![Box::from(Text::with_pos("NAPS", (200.0, 100.0))), Box::from(Text::with_pos("MUNKKI", (-200.0, 0.0)))]
-        },
-        SourceSlide{
-            background_color: RED,
-            sources: vec![Box::from(TypstElement::from("#set page(width: 100pt, height: 100pt)\n== Euler\n$e^(i pi) + 1 = 0$"))]
-        },
-        SourceSlide{
-            background_color: BLUE,
-            sources: vec![Box::from(TypstElement::from("#set page(width: 100pt, height: 100pt)\n== Hemo munk"))]
-        }];
-
-    let slides = source_slides.iter().map(|s| s.parse(app, &sandbox)).collect();
-
-    Model {
-        current_slide: 0,
-        slides: slides,
-    }
-}
 
 fn update(_app: &App, _model: &mut Model, _update: Update) {
 }
@@ -102,11 +35,73 @@ fn view(app: &App, model: &Model, frame: Frame){
     let draw = app.draw();
     draw.background().color(current_slide.background_color);
     for element in &current_slide.elements {
-        if let Some(texture) = &element.texture {
-            draw.texture(texture).x(element.x).y(element.y);
+        match element {
+            ViewElement::Texture { texture, x, y } => {
+                if let Some(texture) = texture {
+                        draw.texture(texture).x(*x).y(*y);
+                }
+            }
         }
     }
     draw.to_frame(app, &frame).unwrap();
+}
+
+struct Model {
+    current_slide: usize,
+    slides: Vec<ViewSlide>,
+}
+
+enum ViewElement {
+    Texture {
+        texture: Option<wgpu::Texture>,
+        x: f32,
+        y: f32
+    }
+}
+
+struct ViewSlide {
+    background_color: rgb::Srgb<u8>,
+    elements: Vec<ViewElement>
+}
+
+fn model(app: &App) -> Model {
+    let mut slideshow = Slideshow::new();
+
+    let math = TypstElement::from("#set page(width: auto, height: auto, fill: none)\n$f(x)$");
+    slideshow.slide();
+    slideshow.add(math);
+    slideshow.slide();
+
+    let math2 = TypstElement::from("#set page(width: auto, height: auto, fill: none)\n$f(x) = x$");
+    let mut math3 = TypstElement::from("#set page(width: auto, height: auto, fill: none)\n$f'(x) = 1$");
+    math3.set_y(100.0);
+
+    slideshow.add(math2);
+    slideshow.add(math3);
+
+
+    let slides = slideshow.slides().map(|slide| -> ViewSlide {
+        let elements = slide.get_elements();
+        let mut view_elements: Vec<ViewElement> = Vec::new();
+        for element in elements {
+            match element {
+                sildes::Element::Root(_) => {},
+                sildes::Element::Texture(t) => {
+                    view_elements.push(ViewElement::Texture { 
+                        texture: Some(t.to_texture(app).unwrap()), 
+                        x: t.get_x(), 
+                        y: t.get_y() 
+                    });
+                }
+            }
+        }
+        ViewSlide {
+            background_color: WHITE,
+            elements: view_elements
+        }
+    }).collect();
+
+    Model { current_slide: 0, slides }
 }
 
 fn main() {

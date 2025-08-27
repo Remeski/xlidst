@@ -3,7 +3,7 @@ use tiny_skia::Pixmap;
 use typst::layout::{Axis, PagedDocument};
 use nannou::wgpu;
 
-use crate::utils::{self, sandbox::Sandbox};
+use crate::{sildes::{AsTexture, Element, ToElement}, utils::{self, sandbox::{self, Sandbox}}};
 
 const DESIRED_RESOLUTION: f32 = 1000.0;
 const MAX_SIZE: f32 = 10000.0;
@@ -80,6 +80,7 @@ impl TypstElement {
             y: 0.0
         }
     }
+
     pub fn set_x(&mut self, x: f32) {
         self.x = x;
     }
@@ -88,9 +89,16 @@ impl TypstElement {
     }
 }
 
-impl crate::Source for TypstElement {
-    fn to_texture(&self, app: &App, sandbox: &Sandbox) -> Texture {
-        compile_to_texture(&self.source, sandbox, app)
+impl ToElement for TypstElement {
+    fn to(self) -> Element {
+        Element::Texture(Box::from(self))
+    }
+}
+
+impl AsTexture for TypstElement {
+    fn to_texture(&self, app: &App) -> Option<Texture> {
+        let sandbox = Sandbox::new();
+        Some(compile_to_texture(&self.source, &sandbox, app))
     }
     fn get_x(&self) -> f32 {
         self.x
@@ -100,44 +108,49 @@ impl crate::Source for TypstElement {
     }
 }
 
-pub struct Text {
-    text: String,
-    x: f32,
-    y: f32
-}
-
-impl Text {
-    pub fn from(source: &str) -> Text {
-        Text {
-            text: String::from(source),
-            x: 0.0,
-            y: 0.0
-        }
-    }
-    pub fn with_pos(source: &str, (x,y): (f32, f32)) -> Text {
-        let mut text = Self::from(source);
-        text.set_x(x);
-        text.set_y(y);
-        text
-    }
-    pub fn set_x(&mut self, x: f32) {
-        self.x = x;
-    }
-    pub fn set_y(&mut self, y: f32) {
-        self.y = y;
-    }
-}
-
-impl crate::Source for Text {
-    fn to_texture(&self, app: &App, sandbox: &Sandbox) -> Texture {
-        let source = format!("#set page(fill: none, width: auto, height: auto)\n#text([{}])", &self.text);
-        let typst_element = TypstElement::from(&source);
-        typst_element.to_texture(app, sandbox)
-    }
-    fn get_x(&self) -> f32 {
-        self.x
-    }
-    fn get_y(&self) -> f32 {
-        self.y
-    }
-}
+// pub struct Text {
+//     text: String,
+//     x: f32,
+//     y: f32
+// }
+//
+// impl Text {
+//     pub fn from(source: &str) -> Text {
+//         Text {
+//             text: String::from(source),
+//             x: 0.0,
+//             y: 0.0
+//         }
+//     }
+//     pub fn with_pos(source: &str, (x,y): (f32, f32)) -> Text {
+//         let mut text = Self::from(source);
+//         text.set_x(x);
+//         text.set_y(y);
+//         text
+//     }
+//     pub fn set_x(&mut self, x: f32) {
+//         self.x = x;
+//     }
+//     pub fn set_y(&mut self, y: f32) {
+//         self.y = y;
+//     }
+// }
+//
+// impl AsTexture for Text {
+//     fn to_texture(&self, app: &App) -> Option<Texture> {
+//         let source = format!("#set page(fill: none, width: auto, height: auto)\n#text([{}])", &self.text);
+//
+//         if let Element::Texture(typst_element) = TypstElement::from(&source) {
+//             typst_element.to_texture(app)
+//         } else {
+//             None
+//         }
+//
+//     }
+//     fn get_x(&self) -> f32 {
+//         self.x
+//     }
+//     fn get_y(&self) -> f32 {
+//         self.y
+//     }
+// }
