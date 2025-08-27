@@ -1,6 +1,8 @@
-use nannou::{wgpu::Texture, App};
+use nannou::{App, wgpu::Texture};
 
-// use crate::utils::sandbox::Sandbox;
+use crate::slides::render::{ViewElement, ViewSlide};
+
+pub mod render;
 
 pub trait AsTexture {
     fn to_texture(&self, app: &App) -> Option<Texture>;
@@ -10,6 +12,10 @@ pub trait AsTexture {
 
 pub trait AsRoot {
     fn get_children(&self) -> &Option<Vec<Element>>;
+}
+
+pub trait ToElement {
+    fn to(self) -> Element;
 }
 
 pub enum Element {
@@ -28,17 +34,13 @@ impl AsRoot for RootElement {
 }
 
 pub struct Slide {
-    elements: Vec<Element>
-}
-
-pub struct Slideshow {
-    slides: Vec<Slide>
+    elements: Vec<Element>,
 }
 
 impl Slide {
     pub fn new() -> Slide {
         Slide {
-            elements: vec![Element::Root(Box::from(RootElement { children: None }))]
+            elements: vec![Element::Root(Box::from(RootElement { children: None }))],
         }
     }
     pub fn get_elements(&self) -> &Vec<Element> {
@@ -46,15 +48,13 @@ impl Slide {
     }
 }
 
-pub trait ToElement {
-    fn to(self) -> Element;
+pub struct Slideshow {
+    slides: Vec<Slide>,
 }
 
 impl Slideshow {
     pub fn new() -> Slideshow {
-        Slideshow {
-            slides: Vec::new()
-        }
+        Slideshow { slides: Vec::new() }
     }
 
     pub fn slide(&mut self) {
@@ -72,5 +72,29 @@ impl Slideshow {
     pub fn slides(&self) -> core::slice::Iter<'_, Slide> {
         self.slides.iter()
     }
-}
 
+    pub fn to_view_slides(&self, app: &App) -> Vec<ViewSlide> {
+        self.slides()
+            .map(|slide| -> ViewSlide {
+                let elements = slide.get_elements();
+                let mut view_elements: Vec<ViewElement> = Vec::new();
+                for element in elements {
+                    match element {
+                        Element::Root(_) => {}
+                        Element::Texture(t) => {
+                            view_elements.push(ViewElement::Texture {
+                                texture: Some(t.to_texture(app).unwrap()),
+                                x: t.get_x(),
+                                y: t.get_y(),
+                            });
+                        }
+                    }
+                }
+                ViewSlide {
+                    background_color: nannou::prelude::WHITE,
+                    elements: view_elements,
+                }
+            })
+            .collect()
+    }
+}

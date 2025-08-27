@@ -9,8 +9,8 @@ pub fn main(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let block = input_fn.block;
 
     let expanded = quote! {
-        use xlidst::{ViewSlide, ViewElement, Model, start, slides::Element};
-        use nannou::{app::App, prelude::*};
+        use nannou::{app::App};
+        use xlidst::{start, Model};
 
         fn get_slideshow() -> Slideshow {
             #block
@@ -18,27 +18,7 @@ pub fn main(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
         fn model(app: &App) -> Model {
             let slideshow = get_slideshow();
-            let slides = slideshow.slides().map(|slide| -> ViewSlide {
-                let elements = slide.get_elements();
-                let mut view_elements: Vec<ViewElement> = Vec::new();
-                for element in elements {
-                    match element {
-                        Element::Root(_) => {},
-                        Element::Texture(t) => {
-                            view_elements.push(ViewElement::Texture { 
-                                texture: Some(t.to_texture(app).unwrap()), 
-                                x: t.get_x(), 
-                                y: t.get_y() 
-                            });
-                        }
-                    }
-                }
-                ViewSlide {
-                    background_color: WHITE,
-                    elements: view_elements
-                }
-            }).collect();
-
+            let slides = slideshow.to_view_slides(app);
             return Model { current_slide: 0, slides };
         }
 
