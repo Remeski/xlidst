@@ -178,12 +178,6 @@ impl Sandbox {
 	}
 }
 
-impl WithSource<'_> {
-	pub fn main_source(&self) -> &Source {
-		&self.source
-	}
-}
-
 impl typst::World for WithSource<'_> {
 	fn library(&self) -> &LazyHash<Library> {
 		&self.sandbox.library

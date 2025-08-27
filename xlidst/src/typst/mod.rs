@@ -3,17 +3,11 @@ use tiny_skia::Pixmap;
 use typst::layout::{Axis, PagedDocument};
 use nannou::wgpu;
 
-use crate::{sildes::{AsTexture, Element, ToElement}, utils::{self, sandbox::{self, Sandbox}}};
+use crate::{slides::{AsTexture, Element, ToElement}, utils::{self, sandbox::Sandbox}};
 
 const DESIRED_RESOLUTION: f32 = 1000.0;
 const MAX_SIZE: f32 = 10000.0;
 const MAX_PIXELS_PER_POINT: f32 = 5.0;
-
-#[derive(Debug)]
-pub struct TooBig {
-	size: f32,
-	axis: Axis,
-}
 
 fn pixmap_to_texture(app: &App, pixmap: &tiny_skia::Pixmap) -> wgpu::Texture {
     // create a texture from pixmap
@@ -27,23 +21,14 @@ fn pixmap_to_texture(app: &App, pixmap: &tiny_skia::Pixmap) -> wgpu::Texture {
     wgpu::Texture::load_from_image(device, queue, wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT, &dynamic_image)
 }
 
-fn determine_pixels_per_point(size: typst::layout::Size) -> Result<f32, TooBig> {
-	// We want to truncate.
-	#![allow(clippy::cast_possible_truncation)]
-
+fn determine_pixels_per_point(size: typst::layout::Size) -> Result<f32, String> {
 	let x = size.x.to_pt() as f32;
 	let y = size.y.to_pt() as f32;
 
 	if x > MAX_SIZE {
-		Err(TooBig {
-			size: x,
-			axis: Axis::X,
-		})
+		Err(String::from("x too big"))
 	} else if y > MAX_SIZE {
-		Err(TooBig {
-			size: y,
-			axis: Axis::Y,
-		})
+		Err(String::from("y too bgg"))
 	} else {
 		let area = x * y;
 		let nominal = DESIRED_RESOLUTION / area.sqrt();
@@ -75,7 +60,7 @@ pub struct TypstElement {
 impl TypstElement {
     pub fn from(source: &str) -> TypstElement {
         TypstElement {
-            source: String::from(source),
+            source: String::from(format!("#set page(width: auto, height: auto, fill: none)\n{}", source)),
             x: 0.0,
             y: 0.0
         }

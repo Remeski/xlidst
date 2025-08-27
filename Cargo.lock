@@ -4885,6 +4885,8 @@ name = "xlidst"
 version = "0.1.0"
 dependencies = [
  "nannou",
+ "quote",
+ "syn 2.0.106",
  "tar",
  "time",
  "tiny-skia 0.11.4",
@@ -4893,7 +4895,16 @@ dependencies = [
  "typst-assets",
  "typst-render",
  "ureq",
+ "xlidst-macros",
  "zune-inflate",
+]
+
+[[package]]
+name = "xlidst-macros"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn 2.0.106",
 ]
 
 [[package]]
