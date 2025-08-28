@@ -8,6 +8,7 @@ pub trait AsTexture {
     fn to_texture(&self, app: &App) -> Option<Texture>;
     fn get_x(&self) -> f32;
     fn get_y(&self) -> f32;
+    fn get_scale(&self) -> f32;
 }
 
 pub trait AsRoot {
@@ -86,6 +87,7 @@ impl Slideshow {
                                 texture: Some(t.to_texture(app).unwrap()),
                                 x: t.get_x(),
                                 y: t.get_y(),
+                                scale: t.get_scale()
                             });
                         }
                     }

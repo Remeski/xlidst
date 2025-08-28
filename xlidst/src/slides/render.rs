@@ -5,6 +5,7 @@ pub enum ViewElement {
         texture: Option<Texture>,
         x: f32,
         y: f32,
+        scale: f32,
     },
 }
 

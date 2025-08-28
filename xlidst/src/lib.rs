@@ -32,14 +32,24 @@ fn view(app: &App, model: &Model, frame: Frame) {
     draw.background().color(current_slide.background_color);
     for element in &current_slide.elements {
         match element {
-            ViewElement::Texture { texture, x, y } => {
+            ViewElement::Texture { texture, x, y, scale } => {
                 if let Some(texture) = texture {
-                    draw.texture(texture).x(*x).y(*y);
+                    draw.scale(*scale).texture(texture).x(*x).y(*y);
                 }
             }
         }
     }
     draw.to_frame(app, &frame).unwrap();
+}
+
+pub struct Context {
+    pub window_pixels: (u32, u32)
+}
+
+pub fn get_context(app: &App) -> Context {
+    Context {
+        window_pixels: app.main_window().inner_size_pixels()
+    }
 }
 
 pub struct Model {
