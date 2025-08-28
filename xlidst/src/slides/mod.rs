@@ -65,7 +65,7 @@ impl Slideshow {
 
     pub fn add(&mut self, element: impl ToElement) {
         // this probably isn't the smartest way to do this
-        let mut last = self.slides.pop().expect("Slide not initilized.");
+        let mut last = self.slides.pop().expect("Slide not initialized.");
         last.elements.push(element.to());
         self.slides.push(last);
     }
