@@ -63,25 +63,29 @@ pub struct TypstElement {
     source: String,
     x: f32,
     y: f32,
+    scale: f32
 }
 
 impl TypstElement {
     pub fn from(source: &str) -> TypstElement {
         TypstElement {
             source: String::from(format!(
-                "#set page(width: auto, height: auto, fill: none)\n{}",
+                "#set page(width: auto, height: auto, fill: none)\n#align(horizon + center)[{}]",
                 source
             )),
             x: 0.0,
             y: 0.0,
+            scale: 1.0
         }
     }
-
     pub fn set_x(&mut self, x: f32) {
         self.x = x;
     }
     pub fn set_y(&mut self, y: f32) {
         self.y = y;
+    }
+    pub fn set_scale(&mut self, scale: f32) {
+        self.scale = scale;
     }
 }
 
@@ -101,5 +105,8 @@ impl AsTexture for TypstElement {
     }
     fn get_y(&self) -> f32 {
         self.y
+    }
+    fn get_scale(&self) -> f32 {
+        self.scale
     }
 }

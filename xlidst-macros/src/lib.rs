@@ -10,14 +10,14 @@ pub fn main(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         use nannou::{app::App};
-        use xlidst::{start, Model};
+        use xlidst::{start, Model, get_context};
 
-        fn get_slideshow() -> Slideshow {
+        fn get_slideshow(ctx: Context) -> Slideshow {
             #block
         }
 
         fn model(app: &App) -> Model {
-            let slideshow = get_slideshow();
+            let slideshow = get_slideshow(get_context(app));
             let slides = slideshow.to_view_slides(app);
             return Model { current_slide: 0, slides };
         }
