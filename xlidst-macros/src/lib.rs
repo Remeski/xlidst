@@ -18,8 +18,10 @@ pub fn main(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
         fn model(app: &App) -> Model {
             let slideshow = get_slideshow(get_context(app));
-            let slides = slideshow.to_view_slides(app);
-            return Model { current_slide: 0, slides };
+            // let slides = slideshow.to_view_slides(app);
+            // let animations = slideshow.get_animations(app);
+            let slides = slideshow.get_slides();
+            Model::new(app, slides)
         }
 
         fn main() {

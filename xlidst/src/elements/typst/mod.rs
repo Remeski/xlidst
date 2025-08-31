@@ -8,62 +8,12 @@ use crate::{
     utils::{self, sandbox::Sandbox},
 };
 
-const DESIRED_RESOLUTION: f32 = 1000.0;
-const MAX_SIZE: f32 = 10000.0;
-const MAX_PIXELS_PER_POINT: f32 = 5.0;
-
-fn pixmap_to_texture(app: &App, pixmap: &tiny_skia::Pixmap) -> wgpu::Texture {
-    let window = app.main_window();
-    let device = window.device();
-    let queue = window.queue();
-
-    let image =
-        nannou::image::RgbaImage::from_raw(pixmap.width(), pixmap.height(), pixmap.data().to_vec())
-            .expect("rgbaimage creation failed");
-    let dynamic_image = nannou::image::DynamicImage::ImageRgba8(image);
-    wgpu::Texture::load_from_image(
-        device,
-        queue,
-        wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
-        &dynamic_image,
-    )
-}
-
-fn determine_pixels_per_point(size: typst::layout::Size) -> Result<f32, String> {
-    let x = size.x.to_pt() as f32;
-    let y = size.y.to_pt() as f32;
-
-    if x > MAX_SIZE {
-        Err(String::from("x too big"))
-    } else if y > MAX_SIZE {
-        Err(String::from("y too bgg"))
-    } else {
-        let area = x * y;
-        let nominal = DESIRED_RESOLUTION / area.sqrt();
-        Ok(nominal.min(MAX_PIXELS_PER_POINT))
-    }
-}
-
-fn compile_pixmap(sandbox: &utils::sandbox::Sandbox, source: &str) -> Pixmap {
-    let world = sandbox.with_source(String::from(source));
-    let document = typst::compile::<PagedDocument>(&world);
-    let output = document.output.expect("Typst compilation failed");
-    let page = output.pages.get(0).expect("No pages rendered");
-    let pixels_per_point = determine_pixels_per_point(page.frame.size()).unwrap();
-    let render = typst_render::render(page, pixels_per_point);
-    render
-}
-
-fn compile_to_texture(source: &str, sandbox: &Sandbox, app: &App) -> Texture {
-    let pixmap = compile_pixmap(sandbox, source);
-    pixmap_to_texture(app, &pixmap)
-}
-
 pub struct TypstElement {
     source: String,
     x: f32,
     y: f32,
-    scale: f32
+    scale: f32,
+    texture: Option<Texture>,
 }
 
 impl TypstElement {
@@ -75,7 +25,8 @@ impl TypstElement {
             )),
             x: 0.0,
             y: 0.0,
-            scale: 1.0
+            scale: 1.0,
+            texture: None,
         }
     }
     pub fn set_x(&mut self, x: f32) {
@@ -87,6 +38,60 @@ impl TypstElement {
     pub fn set_scale(&mut self, scale: f32) {
         self.scale = scale;
     }
+
+    const DESIRED_RESOLUTION: f32 = 1000.0;
+    const MAX_SIZE: f32 = 10000.0;
+    const MAX_PIXELS_PER_POINT: f32 = 5.0;
+
+    fn pixmap_to_texture(app: &App, pixmap: &tiny_skia::Pixmap) -> wgpu::Texture {
+        let window = app.main_window();
+        let device = window.device();
+        let queue = window.queue();
+
+        let image = nannou::image::RgbaImage::from_raw(
+            pixmap.width(),
+            pixmap.height(),
+            pixmap.data().to_vec(),
+        )
+        .expect("rgbaimage creation failed");
+        let dynamic_image = nannou::image::DynamicImage::ImageRgba8(image);
+        wgpu::Texture::load_from_image(
+            device,
+            queue,
+            wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            &dynamic_image,
+        )
+    }
+
+    fn determine_pixels_per_point(size: typst::layout::Size) -> Result<f32, String> {
+        let x = size.x.to_pt() as f32;
+        let y = size.y.to_pt() as f32;
+
+        if x > Self::MAX_SIZE {
+            Err(String::from("x too big"))
+        } else if y > Self::MAX_SIZE {
+            Err(String::from("y too bgg"))
+        } else {
+            let area = x * y;
+            let nominal = Self::DESIRED_RESOLUTION / area.sqrt();
+            Ok(nominal.min(Self::MAX_PIXELS_PER_POINT))
+        }
+    }
+
+    fn compile_pixmap(sandbox: &utils::sandbox::Sandbox, source: &str) -> Pixmap {
+        let world = sandbox.with_source(String::from(source));
+        let document = typst::compile::<PagedDocument>(&world);
+        let output = document.output.expect("Typst compilation failed");
+        let page = output.pages.get(0).expect("No pages rendered");
+        let pixels_per_point = Self::determine_pixels_per_point(page.frame.size()).unwrap();
+        let render = typst_render::render(page, pixels_per_point);
+        render
+    }
+
+    fn compile_to_texture(source: &str, sandbox: &Sandbox, app: &App) -> Texture {
+        let pixmap = Self::compile_pixmap(sandbox, source);
+        Self::pixmap_to_texture(app, &pixmap)
+    }
 }
 
 impl ToElement for TypstElement {
@@ -96,17 +101,30 @@ impl ToElement for TypstElement {
 }
 
 impl AsTexture for TypstElement {
-    fn to_texture(&self, app: &App) -> Option<Texture> {
-        let sandbox = Sandbox::new();
-        Some(compile_to_texture(&self.source, &sandbox, app))
+    fn render_texture(&mut self, app: &App) -> Option<Texture> {
+        if self.texture.is_some() {
+            self.texture.clone()
+        } else {
+            let sandbox = Sandbox::new();
+            self.texture = Some(Self::compile_to_texture(&self.source, &sandbox, app));
+            self.texture.clone()
+        }
     }
+
+    fn get_texture(&self) -> Option<Texture> {
+        self.texture.clone()
+    }
+
     fn get_x(&self) -> f32 {
         self.x
     }
+
     fn get_y(&self) -> f32 {
         self.y
     }
+
     fn get_scale(&self) -> f32 {
         self.scale
     }
+
 }

@@ -1,11 +1,15 @@
 use nannou::{App, wgpu::Texture};
 
-use crate::slides::render::{ViewElement, ViewSlide};
+use crate::{
+    animations::{Animatable, Animation},
+    slides::render::{ViewElement, ViewSlide},
+};
 
 pub mod render;
 
 pub trait AsTexture {
-    fn to_texture(&self, app: &App) -> Option<Texture>;
+    fn get_texture(&self) -> Option<Texture>;
+    fn render_texture(&mut self, app: &App) -> Option<Texture>;
     fn get_x(&self) -> f32;
     fn get_y(&self) -> f32;
     fn get_scale(&self) -> f32;
@@ -36,16 +40,27 @@ impl AsRoot for RootElement {
 
 pub struct Slide {
     elements: Vec<Element>,
+    animations: Vec<Box<dyn Animation>>,
 }
 
 impl Slide {
     pub fn new() -> Slide {
         Slide {
             elements: vec![Element::Root(Box::from(RootElement { children: None }))],
+            animations: vec![],
         }
     }
+
+    pub fn get_elements_mut(&mut self) -> &mut Vec<Element> {
+        &mut self.elements
+    }
+
     pub fn get_elements(&self) -> &Vec<Element> {
         &self.elements
+    }
+
+    pub fn animate(&mut self, animation: Box<dyn Animation>) {
+        self.animations.push(animation);
     }
 }
 
@@ -74,29 +89,14 @@ impl Slideshow {
         self.slides.iter()
     }
 
-    pub fn to_view_slides(&self, app: &App) -> Vec<ViewSlide> {
-        self.slides()
-            .map(|slide| -> ViewSlide {
-                let elements = slide.get_elements();
-                let mut view_elements: Vec<ViewElement> = Vec::new();
-                for element in elements {
-                    match element {
-                        Element::Root(_) => {}
-                        Element::Texture(t) => {
-                            view_elements.push(ViewElement::Texture {
-                                texture: Some(t.to_texture(app).unwrap()),
-                                x: t.get_x(),
-                                y: t.get_y(),
-                                scale: t.get_scale()
-                            });
-                        }
-                    }
-                }
-                ViewSlide {
-                    background_color: nannou::prelude::WHITE,
-                    elements: view_elements,
-                }
-            })
-            .collect()
+    pub fn animate(&mut self, animation: Box<dyn Animation>) {
+        let mut last = self.slides.pop().expect("Slide not initialized.");
+        last.animate(animation);
+        self.slides.push(last);
     }
+
+    pub fn get_slides(self) -> Vec<Slide> {
+        self.slides
+    }
+
 }
